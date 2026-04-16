@@ -3,7 +3,7 @@ const {
   validateUserProfileUpdate,
   RESTRICTED_FIELDS,
   UPDATABLE_FIELDS,
-} = require("../models/userModel");
+} = require("../model/userModel");
 
 // ─── Get Profile ──────────────────────────────────────────────────────────────
 

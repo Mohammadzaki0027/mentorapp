@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const { getCurrentUser, getCurrentAdmin } = require("../middleware/authMiddleware");
+const { getCurrentUser, getCurrentAdmin } = require("../../middleware/authMiddleware");
 
 const {
   getDashboardMetrics,
@@ -25,7 +25,7 @@ const {
   addTestimonial,
   editTestimonial,
   deleteTestimonial,
-} = require("../controllers/adminController");
+} = require("../../controllers/admin/adminController");
 
 // Multer for in-memory file uploads (replaces FastAPI UploadFile)
 const upload = multer({ storage: multer.memoryStorage() });

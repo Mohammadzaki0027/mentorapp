@@ -3,14 +3,14 @@ const cors = require("cors");
 
 const authRoutes = require("./src/routes/authRoutes");
 const usersRoutes = require("./src/routes/usersRoutes");
-// const countriesRoutes = require("./src/routes/countriesRoutes");
+ const countriesRoutes = require("./src/routes/countriesRoutes");
 const universitiesRoutes = require("./src/routes/universitiesRoutes");
-// const shortlistsRoutes = require("./src/routes/shortlistsRoutes");
-// const applicationsRoutes = require("./src/routes/applicationsRoutes");
-// const testimonialsRoutes = require("./src/routes/testimonialsRoutes");
-// const referralsRoutes = require("./src/routes/referralsRoutes");
-// const mentorsRoutes = require("./src/routes/mentorsRoutes");
-// const simpleEndpointsRoutes = require("./src/routes/simpleEndpointsRoutes");
+ const shortlistsRoutes = require("./src/routes/shortlistsRoutes");
+ const applicationsRoutes = require("./src/routes/applicationsRoutes");
+ const testimonialsRoutes = require("./src/routes/testimonialsRoutes");
+ const referralsRoutes = require("./src/routes/referralRoutes");
+ const mentorsRoutes = require("./src/routes/mentorsRoutes");
+ const simpleEndpointsRoutes = require("./src/routes/simpleRoutes");
 
 const {
   dashboardRouter,
@@ -21,7 +21,8 @@ const {
   rolesRouter,
   countriesAdminRouter,
   testimonialsAdminRouter,
-} = require("./src/routes/adminRoutes");
+
+} = require("./src/routes/admin/adminRoutes");
 
 const app = express();
 

@@ -21,7 +21,7 @@ const {
   addTestimonialService,
   editTestimonialService,
   deleteTestimonialService,
-} = require("../services/adminService");
+} = require("../../services/admin/adminService");
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 

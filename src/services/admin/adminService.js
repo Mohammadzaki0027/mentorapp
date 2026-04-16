@@ -1,10 +1,10 @@
 const { v4: uuidv4 } = require("uuid");
-const { getSupabase } = require("../config/database");
+const { getSupabase } = require("../../config/database");
 const {
   validateAdminCreate,
   validateAdminUpdate,
   ADMIN_UPDATE_FIELDS,
-} = require("../models/adminRoleModel");
+} = require("../../model/admin/adminRoleModel");
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DASHBOARD
