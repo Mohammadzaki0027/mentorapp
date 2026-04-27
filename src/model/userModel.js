@@ -1,17 +1,35 @@
 // Replaces Pydantic UserProfile and UserProfileUpdate models
 // Validation is done manually since Express has no built-in Pydantic equivalent
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const validateUserProfile = (data) => {
   const errors = [];
 
   if (!data.user_id) errors.push("user_id is required");
   if (!data.name) errors.push("name is required");
-  if (!data.email || !data.email.includes("@")) errors.push("Valid email is required");
-  if (!data.phone || data.phone.length < 10) errors.push("Valid phone number is required");
 
-  const neetScore = data.neet_score ?? 0;
-  if (neetScore < 0 || neetScore > 720)
-    errors.push("NEET score must be between 0 and 720");
+  if (!data.email || !emailRegex.test(data.email)) {
+    errors.push("Valid email is required");
+  }
+
+  if (data.phone && data.phone.length < 10) {
+    errors.push("Valid phone number is required");
+  }
+
+  if (data.neet_score !== undefined && data.neet_score !== null) {
+    if (data.neet_score < 0 || data.neet_score > 720) {
+      errors.push("NEET score must be between 0 and 720");
+    }
+  }
+
+  if (data.applied_universities && !Array.isArray(data.applied_universities)) {
+    errors.push("applied_universities must be an array");
+  }
+
+  if (data.shortlisted_universities && !Array.isArray(data.shortlisted_universities)) {
+    errors.push("shortlisted_universities must be an array");
+  }
 
   return errors;
 };

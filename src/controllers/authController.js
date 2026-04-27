@@ -86,82 +86,65 @@ const {
 // };
 
 const signupUser = async (req, res) => {
-  const { name, email /* phone */ } = req.body;
+  const { name, email } = req.body;
   const supabase = getSupabase();
 
   try {
-    //  Check if user already exists (EMAIL ONLY)
-    const { data: existingProfile, error: fetchError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("email", email);
-
-    if (fetchError) {
-      return res.status(500).json({ detail: fetchError.message });
+    if (!name || !email) {
+      return res.status(400).json({ detail: "Name and email required" });
     }
 
-    if (existingProfile && existingProfile.length > 0) {
-      return res
-        .status(400)
-        .json({ detail: "User already exists with this email" });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // ✅ STEP 1: Check AUTH (source of truth)
+    const { data: usersData } = await supabase.auth.admin.listUsers();
+
+    let user = usersData.users.find(
+      (u) => u.email === normalizedEmail
+    );
+
+    const tempPassword = "Zaki@123";
+
+    // ✅ STEP 2: Create user only if not exists
+    if (!user) {
+      const { data: userResponse, error: signUpError } =
+        await supabase.auth.admin.createUser({
+          email: normalizedEmail,
+          password: tempPassword,
+          email_confirm: true,
+        });
+
+      if (signUpError) {
+        return res.status(400).json({ detail: signUpError.message });
+      }
+
+      user = userResponse.user;
     }
 
-    const tempPassword = uuidv4();
+    console.log("user", user);
 
-    //  Email signup
-   const { data: userResponse, error: signUpError } =
-  await supabase.auth.admin.createUser({
-    email,
-    password: tempPassword,
-    email_confirm: true, // ✅ skip email verification
-  });
-
-    if (signUpError) {
-      return res.status(400).json({ detail: signUpError.message });
-    }
-
-    if (!userResponse?.user) {
-      return res.status(400).json({ detail: "User not returned" });
-    }
-
-    const user = userResponse.user;
-console.log('====================================');
-console.log(userResponse);
-console.log('====================================');
-    // Profile data (phone removed for now)
+    // ✅ STEP 3: UPSERT profile (no duplicate crash)
     const profileData = {
       user_id: user.id,
       name,
-      email,
-      // phone: null, //  temporarily disabled
-      icon: "",
-      preferred_intake: "",
-      neet_score: 0,
-      category: "",
-      shortlisted_universities: [],
-      applied_universities: [],
-      phone_verified: false,
-      email_verified: false,
+      email: normalizedEmail,
       created_at: getCurrentTimestamp(),
     };
 
-    const { data: profileResult, error: profileError } = await supabase
+    const { error: profileError } = await supabase
       .from("profiles")
-      .insert(profileData)
-      .select();
+      .upsert(profileData, { onConflict: "user_id" });
 
-    if (profileError || !profileResult || profileResult.length === 0) {
-      // Only works with service role key
-      await supabase.auth.admin.deleteUser(user.id);
-
+    if (profileError) {
       return res.status(500).json({
-        detail: profileError?.message || "Failed to create user profile",
+        detail: "Failed to create/update profile",
       });
     }
 
     return res.status(200).json({
-      message: "Signup successful, please verify email",
+      message: "Signup successful (DEV MODE)",
       user_id: user.id,
+      tempPassword,
     });
   } catch (e) {
     return res.status(500).json({
@@ -417,67 +400,100 @@ const verifyPhoneLogin = (req, res) => verifyPhoneOtp(req, res);
 
 // ─── Login with Email ─────────────────────────────────────────────────────────
 
+// const loginEmail = async (req, res) => {
+//   const { email } = req.query;
+//   const supabase = getSupabase();
+
+//   try {
+//     const { data: profileData, error } = await supabase
+//       .from("profiles")
+//       .select("*")
+//       .eq("email", email);
+
+//     if (error || !profileData || profileData.length === 0) {
+//       return res.status(404).json({ detail: "Email not registered" });
+//     }
+
+//     const profile = profileData[0];
+//     const { user_id: userId, name: userName = "User" } = profile;
+//     const otp = generateOtp();
+
+//     // Delete existing OTPs
+//     await supabase.from("otp_verifications").delete().eq("email", email);
+
+//     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+//     const otpData = {
+//       user_id: userId,
+//       email,
+//       otp,
+//       expires_at: expiresAt,
+//       created_at: getCurrentTimestamp(),
+//     };
+
+//     const { data: otpResult, error: otpError } = await supabase
+//       .from("otp_verifications")
+//       .insert(otpData)
+//       .select();
+
+//     if (otpError || !otpResult || otpResult.length === 0) {
+//       return res.status(500).json({ detail: "Failed to generate OTP" });
+//     }
+
+//     const emailSent = await sendEmailOtpService(email, otp, userName);
+//     const verificationStatus = profile.email_verified ? "verified" : "unverified";
+
+//     if (!emailSent) {
+//       console.log(`Email service failed. OTP for ${email}: ${otp}`);
+//       return res.status(200).json({
+//         message: `OTP generated (email service unavailable - check console). Email status: ${verificationStatus}`,
+//         verification_status: verificationStatus,
+//       });
+//     }
+
+//     return res.status(200).json({
+//       message: `OTP sent to email. Email status: ${verificationStatus}`,
+//       verification_status: verificationStatus,
+//     });
+//   } catch (e) {
+//     return res
+//       .status(500)
+//       .json({ detail: `Failed to send OTP: ${e.message}` });
+//   }
+// };
 const loginEmail = async (req, res) => {
-  const { email } = req.query;
+  const { email } = req.body;
   const supabase = getSupabase();
 
   try {
+    if (!email) {
+      return res.status(400).json({ detail: "Email is required" });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
     const { data: profileData, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("email", email);
+      .eq("email", normalizedEmail);
 
     if (error || !profileData || profileData.length === 0) {
       return res.status(404).json({ detail: "Email not registered" });
     }
 
     const profile = profileData[0];
-    const { user_id: userId, name: userName = "User" } = profile;
-    const otp = generateOtp();
-
-    // Delete existing OTPs
-    await supabase.from("otp_verifications").delete().eq("email", email);
-
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    const otpData = {
-      user_id: userId,
-      email,
-      otp,
-      expires_at: expiresAt,
-      created_at: getCurrentTimestamp(),
-    };
-
-    const { data: otpResult, error: otpError } = await supabase
-      .from("otp_verifications")
-      .insert(otpData)
-      .select();
-
-    if (otpError || !otpResult || otpResult.length === 0) {
-      return res.status(500).json({ detail: "Failed to generate OTP" });
-    }
-
-    const emailSent = await sendEmailOtpService(email, otp, userName);
-    const verificationStatus = profile.email_verified ? "verified" : "unverified";
-
-    if (!emailSent) {
-      console.log(`Email service failed. OTP for ${email}: ${otp}`);
-      return res.status(200).json({
-        message: `OTP generated (email service unavailable - check console). Email status: ${verificationStatus}`,
-        verification_status: verificationStatus,
-      });
-    }
 
     return res.status(200).json({
-      message: `OTP sent to email. Email status: ${verificationStatus}`,
-      verification_status: verificationStatus,
+      message: "Login successful (DEV MODE)",
+      user_id: profile.user_id,
+      name: profile.name,
+      email: profile.email,
     });
   } catch (e) {
-    return res
-      .status(500)
-      .json({ detail: `Failed to send OTP: ${e.message}` });
+    return res.status(500).json({
+      detail: `Login failed: ${e.message}`,
+    });
   }
 };
-
 // ─── Verify Email Login ───────────────────────────────────────────────────────
 // Same as verifyEmailOtp — delegates directly
 

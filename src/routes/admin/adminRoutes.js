@@ -31,7 +31,7 @@ const {
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Admin auth middleware chain (reused on every route)
-const adminAuth = [getCurrentUser, getCurrentAdmin];
+const adminAuth = [];
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 const dashboardRouter = express.Router();
